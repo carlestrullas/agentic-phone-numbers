@@ -1,108 +1,112 @@
-# agentic-phone-orders
+# Agentic Phone Orders
 
-Sistema de pedidos telefónicos con IA para una pizzería. Un agente de voz atiende la llamada, toma el pedido y lo registra; la cocina lo ve al momento en un panel web.
+AI phone ordering for a pizzeria. A voice agent answers the call, takes the order and saves it; the kitchen sees it instantly on a live order board.
 
 ```
-Cliente ──llamada──> Agente de voz (ElevenLabs)
-                          │ tool: POST /webhook/pizzeria/pedido
-                          ▼
-                     n8n (valida e inserta) ──> Postgres (tabla pedidos)
-                                                     │ tiempo real
-                                                     ▼
-                                          Panel de comandas (cocina)
+Customer ──call──> Voice agent (ElevenLabs)
+                        │ tool: POST /webhook/pizzeria/pedido
+                        ▼
+                   n8n (validates and inserts) ──> Postgres (pedidos table)
+                                                        │ real time
+                                                        ▼
+                                              Order board (kitchen)
 ```
 
-| Servicio | Qué hace | Local |
+| Service | What it does | Local |
 |---|---|---|
-| `postgres` | BD `pizzeria` (pedidos) y BD `n8n` (datos internos de n8n) | `localhost:5432` |
-| `n8n` | Workflows: recibe el pedido, lo valida y lo guarda | http://localhost:5678 |
-| `frontend` | Panel de comandas en tiempo real | http://localhost:8081 |
-| `caddy` | *(solo servidor)* HTTPS y proxy | — |
+| `postgres` | `pizzeria` DB (orders) and `n8n` DB (n8n internal data) | `localhost:5432` |
+| `n8n` | Workflows: receives the order, validates it and saves it | http://localhost:5678 |
+| `frontend` | Real-time order board | http://localhost:8081 |
+| `caddy` | *(server only)* HTTPS and reverse proxy | — |
 
-## Estructura
+## Structure
 
 ```
-├── docker-compose.yml          # servicios comunes
-├── docker-compose.local.yml    # local: puertos en localhost + túnel opcional
-├── docker-compose.prod.yml     # servidor: Caddy con HTTPS
-├── Makefile                    # todos los comandos (make help)
-├── .env.example                # configuración (copiar a .env)
+├── docker-compose.yml          # shared services
+├── docker-compose.local.yml    # local: ports on localhost + optional tunnel
+├── docker-compose.prod.yml     # server: Caddy with HTTPS
+├── Makefile                    # every command (make help)
+├── .env.example                # configuration (copy to .env)
 ├── services/                   # postgres, frontend, proxy (Caddy), tunnel (nginx)
-├── n8n/workflows/              # workflows de n8n versionados  ← fuente de verdad
-├── n8n/scripts/                # export/import y credenciales
-├── voice-agent/                # copia de la config del agente de ElevenLabs
-└── docs/                       # despliegue en servidor y detalle del workflow
+├── n8n/workflows/              # versioned n8n workflows  ← source of truth
+├── n8n/scripts/                # export/import and credentials
+├── voice-agent/                # copy of the ElevenLabs agent config
+└── docs/                       # server deployment and workflow details
 ```
 
-## Arrancar en local
+## Run locally
 
-Requisitos: Docker Desktop y `make`.
+Requirements: Docker Desktop and `make`.
 
 ```bash
-make init        # crea el .env con contraseñas aleatorias
-make up          # arranca postgres, n8n y el panel
-make n8n-import  # carga workflows y credenciales en n8n
+make init        # create .env with random secrets
+make up          # start postgres, n8n and the order board
+make n8n-import  # load workflows and credentials into n8n
 ```
 
-1. Abre http://localhost:5678 y crea tu usuario de n8n (solo la primera vez).
-2. Abre el panel en http://localhost:8081.
+1. Open http://localhost:5678 and create your n8n user (first time only).
+2. Open the order board at http://localhost:8081.
 
-## Workflows de n8n: cómo se versionan
+## n8n workflows: how they are versioned
 
-Los workflows **viven en Git** (`n8n/workflows/`). La base de datos de n8n es solo una copia que se carga desde ahí.
+Workflows **live in Git** (`n8n/workflows/`). The n8n database is just a copy loaded from there.
 
 ```bash
-# 1. Editas el workflow en el editor de n8n
-make n8n-export                    # 2. lo guardas en n8n/workflows/
-git add n8n/workflows && git commit -m "..."   # 3. commit
-# 4. En otra máquina / el servidor:
+# 1. Edit the workflow in the n8n editor
+make n8n-export                                 # 2. save it to n8n/workflows/
+git add n8n/workflows && git commit -m "..."    # 3. commit
+# 4. On another machine / the server:
 git pull && make n8n-import
 ```
 
-- **Credenciales:** no se versionan. `make n8n-import` las crea a partir del `.env` (ver `n8n/scripts/credentials.js`).
-- **Ejecuciones e historial:** se quedan en la BD de cada entorno.
-- Si olvidas `make n8n-export`, los cambios solo existen en ese n8n.
+- **Credentials** are not versioned. `make n8n-import` creates them from `.env` (see `n8n/scripts/credentials.js`).
+- **Executions and history** stay in each environment's database.
+- If you forget `make n8n-export`, your changes only exist in that n8n instance.
 
-## Probar con ElevenLabs desde local
+## Test with ElevenLabs from your machine
 
 ```bash
-make tunnel        # abre un túnel de Cloudflare y muestra la URL del webhook
-make tunnel-down   # lo cierra
+make tunnel        # opens a Cloudflare tunnel and prints the webhook URL
+make tunnel-down   # closes it
 ```
 
-Solo se expone `POST /webhook/pizzeria/pedido`. La URL **cambia cada vez**: actualízala en la tool de ElevenLabs. Detalles en [`voice-agent/`](voice-agent/README.md).
+Only `POST /webhook/pizzeria/pedido` is exposed. The URL **changes every time**: update it in the ElevenLabs tool. Details in [`voice-agent/`](voice-agent/README.md).
 
-## Desplegar en el servidor
+## Deploy to a server
 
-Resumen: VPS con Docker + dominio apuntando a él + `.env` con `COMPOSE_FILE` de producción + `make up` + `make n8n-import`.
+In short: a VPS with Docker + a domain pointing to it + `.env` with the production `COMPOSE_FILE` + `make up` + `make n8n-import`.
 
-Paso a paso en **[docs/deploy.md](docs/deploy.md)**.
+Step by step in **[docs/deploy.md](docs/deploy.md)**.
 
-## Comandos
+## Commands
 
-| Comando | Qué hace |
+| Command | What it does |
 |---|---|
-| `make up` / `make down` | Arranca / para todo (los datos se mantienen) |
-| `make ps` · `make logs s=n8n` | Estado · logs (de todo o de un servicio) |
-| `make n8n-export` | Workflows de n8n → `n8n/workflows/` |
-| `make n8n-import` | `n8n/workflows/` + credenciales del `.env` → n8n |
-| `make agent-export` | Config del agente de ElevenLabs → `voice-agent/` |
-| `make tunnel` · `make tunnel-down` | Túnel público temporal (solo local) |
-| `make backup` · `make restore DIR=…` | Copia / restauración de las bases de datos |
-| `make psql` | Consola SQL de la BD de pedidos |
+| `make up` / `make down` | Start / stop everything (data is kept) |
+| `make ps` · `make logs s=n8n` | Status · logs (all services or one) |
+| `make n8n-export` | n8n workflows → `n8n/workflows/` |
+| `make n8n-import` | `n8n/workflows/` + credentials from `.env` → n8n |
+| `make agent-export` | ElevenLabs agent config → `voice-agent/` |
+| `make tunnel` · `make tunnel-down` | Temporary public tunnel (local only) |
+| `make backup` · `make restore DIR=…` | Back up / restore the databases |
+| `make psql` | SQL console on the orders database |
 
-## Configuración (`.env`)
+## Configuration (`.env`)
 
-| Variable | Para qué |
+| Variable | Purpose |
 |---|---|
-| `COMPOSE_FILE` | Entorno: `…local.yml` o `…prod.yml` |
-| `POSTGRES_*` | Usuario, contraseña y BD de pedidos |
-| `N8N_ENCRYPTION_KEY` | Cifra las credenciales de n8n. **No cambiarla** una vez arrancado |
-| `PIZZERIA_WEBHOOK_TOKEN` | Token que ElevenLabs envía en la cabecera `X-Pizzeria-Token` |
-| `PANEL_USER` / `PANEL_PASSWORD` | Login del panel (obligatorio en el servidor) |
-| `DOMAIN` | Dominio del servidor |
-| `ELEVENLABS_*` | Opcional, para `make agent-export` |
+| `COMPOSE_FILE` | Environment: `…local.yml` or `…prod.yml` |
+| `POSTGRES_*` | Orders database user, password and name |
+| `N8N_ENCRYPTION_KEY` | Encrypts n8n credentials. **Do not change it** once started |
+| `PIZZERIA_WEBHOOK_TOKEN` | Token ElevenLabs sends in the `X-Pizzeria-Token` header |
+| `PANEL_USER` / `PANEL_PASSWORD` | Order board login (required on the server) |
+| `DOMAIN` | Server domain |
+| `ELEVENLABS_*` | Optional, for `make agent-export` |
 
-## Base de datos
+## Database
 
-El esquema está en `services/postgres/init/` y **solo se aplica al crear la BD por primera vez**. Para cambios posteriores, añade un nuevo `.sql` en esa carpeta (para instalaciones nuevas) y aplícalo a mano en las existentes con `make psql`.
+The schema lives in `services/postgres/init/` and **is only applied when the database is first created**. For later changes, add a new `.sql` file there (for new installs) and apply it manually to existing ones with `make psql`.
+
+## Language
+
+Code and docs are in English. Two things stay in Spanish on purpose: the order board UI (used by the pizzeria staff) and the data contract shared by the voice agent, the workflow and the database (`pedidos` table, fields such as `nombre_cliente`, the webhook path and the messages returned to the agent).

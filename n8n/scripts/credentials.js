@@ -1,19 +1,19 @@
-// Genera las credenciales de n8n a partir de variables de entorno (el .env de cada maquina),
-// para que los secretos nunca esten en Git. Los ids coinciden con los que usan los workflows.
-// Se ejecuta dentro del contenedor de n8n y su salida se pasa a `n8n import:credentials`.
+// Builds the n8n credentials from environment variables (each machine's .env),
+// so secrets never end up in Git. The ids match the ones referenced by the workflows.
+// Runs inside the n8n container; its output is fed to `n8n import:credentials`.
 //
-// Para anadir una credencial nueva: creala aqui con un id fijo, anade sus variables
-// al .env.example y al docker-compose.yml (servicio n8n), y usala en el workflow.
-const env = (nombre) => {
-  const v = process.env[nombre];
+// To add a new credential: define it here with a fixed id, add its variables to
+// .env.example and docker-compose.yml (n8n service), and use it in the workflow.
+const env = (name) => {
+  const v = process.env[name];
   if (!v) {
-    console.error(`Falta la variable ${nombre} en el .env`);
+    console.error(`Missing variable ${name} in .env`);
     process.exit(1);
   }
   return v;
 };
 
-const credenciales = [
+const credentials = [
   {
     id: "jA08VU6SLQfTvonG",
     name: "Pizzeria webhook token",
@@ -35,4 +35,4 @@ const credenciales = [
   },
 ];
 
-process.stdout.write(JSON.stringify(credenciales));
+process.stdout.write(JSON.stringify(credentials));

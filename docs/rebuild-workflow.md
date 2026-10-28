@@ -1,121 +1,122 @@
-# Prompt para reconstruir el flujo n8n «Pizzeria - Crear pedido (tool ElevenLabs)»
+# Rebuilding the n8n workflow "Pizzeria - Create order (ElevenLabs tool)"
 
-Copia todo este documento a la IA que vaya a implementarlo. Si puedes, adjunta también `n8n/workflows/pizzeria-crear-pedido-tool-elevenlabs.json`: es el flujo original y se importa directamente en n8n (menú `⋯` → *Import from File*).
+Prompt for another AI (or a person) to rebuild the workflow from scratch. Normally you don't need it: `make n8n-import` loads `n8n/workflows/pizzeria-create-order.json` directly.
 
 ---
 
-## Encargo
+## Task
 
-Crea en n8n un flujo llamado **"Pizzeria - Crear pedido (tool ElevenLabs)"**. Es un webhook que un agente de voz de ElevenLabs usa como *tool* para registrar los pedidos telefónicos de una pizzería en una base de datos Postgres. El flujo valida los datos, inserta el pedido y responde en JSON con un mensaje que el agente de voz pueda leerle al cliente o usar para pedirle los datos que falten.
+Create an n8n workflow called **"Pizzeria - Create order (ElevenLabs tool)"**. It is a webhook that an ElevenLabs voice agent uses as a *tool* to record a pizzeria's phone orders in a Postgres database. The workflow validates the data, inserts the order and replies with JSON containing a message the voice agent can read to the customer, or use to ask for missing data.
 
-## Flujo de nodos
+Field names, values and response messages are in Spanish: the agent talks to customers in Spanish.
+
+## Node flow
 
 ```
-Webhook pedido → Validar pedido (Code) → ¿Es válido? (IF)
-                                          ├─ true  → Insertar pedido (Postgres)
-                                          │            ├─ OK    → Responder OK (200)
-                                          │            └─ error → Responder error BD (500)
-                                          └─ false → Responder datos incorrectos (400)
+Order webhook → Validate order (Code) → Is valid? (IF)
+                                          ├─ true  → Insert order (Postgres)
+                                          │            ├─ OK    → Respond OK (200)
+                                          │            └─ error → Respond DB error (500)
+                                          └─ false → Respond invalid data (400)
 ```
 
-### 1. Webhook pedido (`n8n-nodes-base.webhook`, v2)
-- Método `POST`, path `pizzeria/pedido`
-- Autenticación: **Header Auth**, con una credencial llamada "Pizzeria webhook token" (un header con un token secreto que también se configura en la tool de ElevenLabs)
+### 1. Order webhook (`n8n-nodes-base.webhook`, v2)
+- Method `POST`, path `pizzeria/pedido`
+- Authentication: **Header Auth**, credential "Pizzeria webhook token" (header `X-Pizzeria-Token`, same token as the ElevenLabs tool)
 - Response mode: **Using 'Respond to Webhook' node**
 
-### 2. Validar pedido (`n8n-nodes-base.code`, JavaScript)
-Lee `body` del webhook. Campos de entrada:
+### 2. Validate order (`n8n-nodes-base.code`, JavaScript)
+Reads `body` from the webhook. Input fields:
 
-| Campo | Tipo | Regla |
+| Field | Type | Rule |
 |---|---|---|
-| `nombre_cliente` | string | obligatorio |
-| `telefono` | string | obligatorio |
-| `tipo_entrega` | string | `domicilio` o `recoger` (se pasa a minúsculas) |
-| `direccion` | string | obligatoria si `tipo_entrega = domicilio` |
-| `productos` | array (o string JSON) | al menos 1; cada uno `{producto, tamano?, cantidad?, notas?}`, `producto` obligatorio, `cantidad` por defecto 1 |
-| `notas` | string | opcional |
+| `nombre_cliente` | string | required |
+| `telefono` | string | required |
+| `tipo_entrega` | string | `domicilio` or `recoger` (lower-cased) |
+| `direccion` | string | required when `tipo_entrega = domicilio` |
+| `productos` | array (or JSON string) | at least 1; each `{producto, tamano?, cantidad?, notas?}`, `producto` required, `cantidad` defaults to 1 |
+| `notas` | string | optional |
 
-Código exacto:
+Exact code:
 
 ```js
-const b = $input.first().json.body || {};
-const errores = [];
-const txt = v => (v === undefined || v === null) ? '' : String(v).trim();
+// Input: the JSON body sent by the ElevenLabs tool.
+// Output field names (errores) and messages stay in Spanish: they are part of the
+// contract with the voice agent, which talks to customers in Spanish.
+const body = $input.first().json.body || {};
+const errors = [];
+const text = v => (v === undefined || v === null) ? '' : String(v).trim();
 
-const nombre = txt(b.nombre_cliente);
-const telefono = txt(b.telefono);
-const tipo = txt(b.tipo_entrega).toLowerCase();
-const direccion = txt(b.direccion);
-const notas = txt(b.notas);
+const name = text(body.nombre_cliente);
+const phone = text(body.telefono);
+const deliveryType = text(body.tipo_entrega).toLowerCase();
+const address = text(body.direccion);
+const notes = text(body.notas);
 
-let productos = b.productos;
-if (typeof productos === 'string') {
-  try { productos = JSON.parse(productos); } catch (e) { productos = null; }
+let items = body.productos;
+if (typeof items === 'string') {
+  try { items = JSON.parse(items); } catch (e) { items = null; }
 }
 
-if (!nombre) errores.push('falta nombre_cliente');
-if (!telefono) errores.push('falta telefono');
-if (!['domicilio', 'recoger'].includes(tipo)) errores.push("tipo_entrega debe ser 'domicilio' o 'recoger'");
-if (tipo === 'domicilio' && !direccion) errores.push('falta direccion para un pedido a domicilio');
-if (!Array.isArray(productos) || productos.length === 0) {
-  errores.push('productos debe ser una lista con al menos un producto');
+if (!name) errors.push('falta nombre_cliente');
+if (!phone) errors.push('falta telefono');
+if (!['domicilio', 'recoger'].includes(deliveryType)) errors.push("tipo_entrega debe ser 'domicilio' o 'recoger'");
+if (deliveryType === 'domicilio' && !address) errors.push('falta direccion para un pedido a domicilio');
+if (!Array.isArray(items) || items.length === 0) {
+  errors.push('productos debe ser una lista con al menos un producto');
 } else {
-  productos = productos.map(p => ({
-    producto: txt(p.producto),
-    tamano: txt(p.tamano) || null,
-    cantidad: parseInt(p.cantidad, 10) || 1,
-    notas: txt(p.notas) || null,
+  items = items.map(it => ({
+    producto: text(it.producto),
+    tamano: text(it.tamano) || null,
+    cantidad: parseInt(it.cantidad, 10) || 1,
+    notas: text(it.notas) || null,
   }));
-  if (productos.some(p => !p.producto)) errores.push('cada producto necesita un nombre en el campo producto');
+  if (items.some(it => !it.producto)) errors.push('cada producto necesita un nombre en el campo producto');
 }
 
-if (errores.length) return [{ json: { valido: false, errores } }];
+if (errors.length) return [{ json: { valid: false, errores: errors } }];
 
 return [{ json: {
-  valido: true,
-  nombre_cliente: nombre,
-  telefono,
-  tipo_entrega: tipo,
-  direccion: direccion || null,
-  productos: JSON.stringify(productos),
-  notas: notas || null,
+  valid: true,
+  nombre_cliente: name,
+  telefono: phone,
+  tipo_entrega: deliveryType,
+  direccion: address || null,
+  productos: JSON.stringify(items),
+  notas: notes || null,
 } }];
 ```
 
-### 3. ¿Es válido? (`n8n-nodes-base.if`, v2.2)
-Condición booleana: `{{ $json.valido }}` es `true`.
+### 3. Is valid? (`n8n-nodes-base.if`, v2.2)
+Boolean condition: `{{ $json.valid }}` is `true`.
 
-### 4. Insertar pedido (`n8n-nodes-base.postgres`, v2.5)
-- Operación: *Execute Query*
-- **On Error: Continue (using error output)**, para que un fallo de la BD vaya a la rama de error
-- Credencial Postgres: "Postgres pizzeria"
+### 4. Insert order (`n8n-nodes-base.postgres`, v2.5)
+- Operation: *Execute Query*
+- **On Error: Continue (using error output)**, so a DB failure goes to the error branch
+- Postgres credential: "Postgres pizzeria"
 - Query:
 ```sql
 INSERT INTO pedidos (nombre_cliente, telefono, tipo_entrega, direccion, productos, notas)
 VALUES ($1, $2, $3, $4, $5::jsonb, $6)
 RETURNING id, estado, creado_en;
 ```
-- Query Parameters (option *queryReplacement*):
-`{{ [$json.nombre_cliente, $json.telefono, $json.tipo_entrega, $json.direccion, $json.productos, $json.notas] }}`
+- Query Parameters (option *queryReplacement*): `{{ [$json.nombre_cliente, $json.telefono, $json.tipo_entrega, $json.direccion, $json.productos, $json.notas] }}`
 
-### 5. Respuestas (`n8n-nodes-base.respondToWebhook`, v1.1, Respond With: JSON)
-- **Responder OK** (200):
-  `{{ { ok: true, pedido_id: $json.id, estado: $json.estado, mensaje: 'Pedido registrado con el numero ' + $json.id } }}`
-- **Responder error BD** (500):
-  `{{ { ok: false, mensaje: 'No se ha podido guardar el pedido. Pide disculpas al cliente y que vuelva a intentarlo.' } }}`
-- **Responder datos incorrectos** (400):
-  `{{ { ok: false, errores: $json.errores, mensaje: 'Faltan datos o son incorrectos: ' + $json.errores.join('; ') + '. Pideselos al cliente y vuelve a llamar a la herramienta.' } }}`
+### 5. Responses (`n8n-nodes-base.respondToWebhook`, v1.1, Respond With: JSON)
+- **Respond OK** (200): `{{ { ok: true, pedido_id: $json.id, estado: $json.estado, mensaje: 'Pedido registrado con el numero ' + $json.id } }}`
+- **Respond DB error** (500): `{{ { ok: false, mensaje: 'No se ha podido guardar el pedido. Pide disculpas al cliente y que vuelva a intentarlo.' } }}`
+- **Respond invalid data** (400): `{{ { ok: false, errores: $json.errores, mensaje: 'Faltan datos o son incorrectos: ' + $json.errores.join('; ') + '. Pideselos al cliente y vuelve a llamar a la herramienta.' } }}`
 
-## Tabla `pedidos` (Postgres)
+## `pedidos` table (Postgres)
 
-La definición completa está en `services/postgres/init/01-pedidos.sql`.
+Full definition in `services/postgres/init/01-pedidos.sql`.
 
-## Credenciales
-Los secretos no van en la exportación. En este repo las crea `make n8n-import` a partir del `.env` (`n8n/scripts/credentials.js`):
-1. **Header Auth** "Pizzeria webhook token": nombre del header y token (el mismo que use la tool de ElevenLabs).
-2. **Postgres** "Postgres pizzeria": host, puerto, base de datos `pizzeria`, usuario y contraseña.
+## Credentials
 
-## Configuración de la tool en ElevenLabs
-- URL: `https://<tu-dominio-o-tunel>/webhook/pizzeria/pedido`, método POST, con el header de autenticación.
-- Parámetros del body: los de la tabla de campos de arriba. Describe `productos` como una lista de objetos `{producto, tamano, cantidad, notas}`.
-- El agente debe leer el `mensaje` de la respuesta: si `ok` es `false` con código 400, pedir al cliente los datos que falten y volver a llamar a la tool.
+Secrets are not part of the export. In this repo `make n8n-import` creates them from `.env` (`n8n/scripts/credentials.js`):
+1. **Header Auth** "Pizzeria webhook token": header name `X-Pizzeria-Token` and the token (same as the ElevenLabs tool).
+2. **Postgres** "Postgres pizzeria": host `postgres`, port 5432, database `pizzeria`, user and password.
+
+## ElevenLabs tool setup
+
+See [`voice-agent/README.md`](../voice-agent/README.md).

@@ -1,18 +1,18 @@
-# Servidor: Caddy recibe todo el trafico por HTTPS (certificado automatico) y solo expone
-#   - POST /webhook/pizzeria/pedido  -> n8n (lo llama ElevenLabs)
-#   - todo lo demas                  -> panel de comandas (con login)
-# El editor de n8n NO es publico: se entra por tunel SSH (ver docs/deploy.md).
+# Server: Caddy receives all traffic over HTTPS (automatic certificate) and only exposes
+#   - POST /webhook/pizzeria/pedido  -> n8n (called by ElevenLabs)
+#   - everything else                -> order board (with login)
+# The n8n editor is NOT public: access it through an SSH tunnel (see docs/deploy.md).
 
 services:
   n8n:
     ports:
-      - "127.0.0.1:5678:5678" # solo accesible desde el propio servidor
+      - "127.0.0.1:5678:5678" # reachable from the server itself only
     environment:
       N8N_HOST: ${DOMAIN}
       N8N_PROTOCOL: https
       WEBHOOK_URL: https://${DOMAIN}/
       N8N_PROXY_HOPS: 1
-      N8N_SECURE_COOKIE: "false" # el editor se usa via http://localhost (tunel SSH)
+      N8N_SECURE_COOKIE: "false" # the editor is used via http://localhost (SSH tunnel)
 
   frontend:
     environment:

@@ -1,97 +1,97 @@
-# Despliegue en un servidor
+# Server deployment
 
-Para este sistema basta un VPS pequeño (2 GB de RAM, por ejemplo Hetzner CX22 o similar) con Ubuntu.
+A small VPS is enough (2 GB RAM, e.g. Hetzner CX22 or similar) running Ubuntu.
 
 ```
 Internet ──HTTPS──> Caddy ─┬─ POST /webhook/pizzeria/pedido ──> n8n
-                           └─ todo lo demás ──────────────────> panel de comandas (con login)
-Editor de n8n: solo por túnel SSH (no es público)
+                           └─ everything else ───────────────> order board (with login)
+n8n editor: SSH tunnel only (not public)
 ```
 
-## 1. Preparar el servidor
+## 1. Prepare the server
 
 ```bash
 # Docker
 curl -fsSL https://get.docker.com | sh
 sudo apt install -y make git
 
-# Firewall: solo SSH y web
+# Firewall: SSH and web only
 sudo ufw allow OpenSSH && sudo ufw allow 80 && sudo ufw allow 443 && sudo ufw enable
 ```
 
-## 2. Dominio
+## 2. Domain
 
-Crea un registro DNS **A** de tu dominio (por ejemplo `pedidos.tudominio.com`) apuntando a la IP del servidor. Caddy sacará el certificado HTTPS solo.
+Create a DNS **A** record for your domain (e.g. `orders.yourdomain.com`) pointing to the server IP. Caddy gets the HTTPS certificate automatically.
 
-## 3. Código y configuración
+## 3. Code and configuration
 
 ```bash
-git clone git@github.com:<usuario>/agentic-phone-orders.git
-cd agentic-phone-orders
+git clone git@github.com:carlestrullas/agentic-phone-numbers.git
+cd agentic-phone-numbers
 make init
 nano .env
 ```
 
-En el `.env` cambia:
+In `.env`, change:
 
 ```env
 COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
-DOMAIN=pedidos.tudominio.com
-PANEL_PASSWORD=<una contraseña>
+DOMAIN=orders.yourdomain.com
+PANEL_PASSWORD=<a password>
 ```
 
-## 4. Arrancar
+## 4. Start
 
 ```bash
 make up
 make n8n-import
-make logs s=caddy   # comprueba que obtiene el certificado
+make logs s=caddy   # check that the certificate is issued
 ```
 
-## 5. Crear el usuario de n8n
+## 5. Create the n8n user
 
-Desde **tu ordenador**, abre un túnel SSH y entra al editor:
+From **your computer**, open an SSH tunnel and go to the editor:
 
 ```bash
-ssh -L 5678:localhost:5678 usuario@IP-del-servidor
+ssh -L 5678:localhost:5678 user@server-ip
 ```
 
-Abre http://localhost:5678 y crea el usuario. Siempre que quieras entrar al editor, abre el mismo túnel.
+Open http://localhost:5678 and create the user. Open the same tunnel whenever you need the editor.
 
-## 6. Conectar ElevenLabs
+## 6. Connect ElevenLabs
 
-En la tool del agente pon:
+In the agent's tool, set:
 
-- URL: `https://pedidos.tudominio.com/webhook/pizzeria/pedido`
-- Cabecera `X-Pizzeria-Token`: el valor de `PIZZERIA_WEBHOOK_TOKEN` del `.env` **del servidor**
+- URL: `https://orders.yourdomain.com/webhook/pizzeria/pedido`
+- Header `X-Pizzeria-Token`: the `PIZZERIA_WEBHOOK_TOKEN` value from the **server's** `.env`
 
-## 7. Comprobar
+## 7. Check
 
 ```bash
-curl -X POST https://pedidos.tudominio.com/webhook/pizzeria/pedido \
+curl -X POST https://orders.yourdomain.com/webhook/pizzeria/pedido \
   -H "Content-Type: application/json" \
   -H "X-Pizzeria-Token: <token>" \
-  -d '{"nombre_cliente":"Prueba","telefono":"600000000","tipo_entrega":"recoger","productos":[{"producto":"Margarita"}]}'
+  -d '{"nombre_cliente":"Test","telefono":"600000000","tipo_entrega":"recoger","productos":[{"producto":"Margarita"}]}'
 ```
 
-Debe responder `{"ok":true,...}` y el pedido aparece en `https://pedidos.tudominio.com`.
+It should reply `{"ok":true,...}` and the order shows up on `https://orders.yourdomain.com`.
 
-## Copias de seguridad automáticas
+## Automatic backups
 
 ```bash
 crontab -e
-# Cada día a las 4:00
-0 4 * * * cd /home/<usuario>/agentic-phone-orders && make backup >> $HOME/backup.log 2>&1
+# Every day at 4:00
+0 4 * * * cd /home/<user>/agentic-phone-numbers && make backup >> $HOME/backup.log 2>&1
 ```
 
-Se guardan las últimas 14 en `backups/`. Para mayor seguridad, cópialas también fuera del servidor.
+The last 14 are kept in `backups/`. For extra safety, also copy them off the server.
 
-## Actualizar
+## Updating
 
 ```bash
 git pull
-make up            # reconstruye lo que haya cambiado
-make n8n-import    # si han cambiado los workflows
+make up            # rebuilds whatever changed
+make n8n-import    # if the workflows changed
 ```
 
-Para actualizar n8n, cambia `N8N_VERSION` en el `.env` y ejecuta `make backup && make up`.
+To upgrade n8n, change `N8N_VERSION` in `.env` and run `make backup && make up`.

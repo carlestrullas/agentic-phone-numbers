@@ -1,6 +1,6 @@
-# Servicios comunes a local y servidor.
-# Lo especifico de cada entorno esta en docker-compose.local.yml / docker-compose.prod.yml
-# (se eligen con COMPOSE_FILE en el .env).
+# Services shared by the local and server environments.
+# Environment-specific settings live in docker-compose.local.yml / docker-compose.prod.yml
+# (selected with COMPOSE_FILE in .env).
 
 services:
   postgres:
@@ -26,7 +26,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      # n8n guarda sus datos internos (workflows, credenciales, ejecuciones) en la BD 'n8n'
+      # n8n stores its internal data (workflows, credentials, executions) in the 'n8n' database
       DB_TYPE: postgresdb
       DB_POSTGRESDB_HOST: postgres
       DB_POSTGRESDB_DATABASE: n8n
@@ -39,8 +39,8 @@ services:
       N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
       N8N_DIAGNOSTICS_ENABLED: "false"
       EXECUTIONS_DATA_PRUNE: "true"
-      EXECUTIONS_DATA_MAX_AGE: 336 # horas (14 dias)
-      # Los usa scripts/n8n-import.sh para crear las credenciales de los workflows
+      EXECUTIONS_DATA_MAX_AGE: 336 # hours (14 days)
+      # Used by scripts/n8n-import.sh to create the credentials the workflows need
       PIZZERIA_WEBHOOK_TOKEN: ${PIZZERIA_WEBHOOK_TOKEN}
       PIZZERIA_DB: ${POSTGRES_DB}
     volumes:

@@ -1,5 +1,5 @@
-# Local: todo accesible solo desde este ordenador (127.0.0.1).
-# Tunel publico opcional para probar con ElevenLabs: perfil 'tunnel' (make tunnel).
+# Local: everything is reachable from this machine only (127.0.0.1).
+# Optional public tunnel to test with ElevenLabs: 'tunnel' profile (make tunnel).
 
 services:
   postgres:
@@ -19,7 +19,7 @@ services:
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-8081}:8080"
 
-  # --- Tunel de Cloudflare: expone SOLO el webhook de pedidos (URL temporal) ---
+  # --- Cloudflare tunnel: exposes ONLY the order webhook (temporary URL) ---
   tunnel-proxy:
     image: nginx:1.27-alpine
     profiles: ["tunnel"]

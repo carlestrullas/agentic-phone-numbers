@@ -30,40 +30,40 @@
     </div>
 
     <dl class="stats">
-      <div class="stat"><dt>En cocina</dt><dd id="stat-pendientes">–</dd></div>
-      <div class="stat"><dt>Finalizados</dt><dd id="stat-finalizados">–</dd></div>
-      <div class="stat"><dt>Espera media</dt><dd id="stat-espera">–</dd></div>
+      <div class="stat"><dt>En cocina</dt><dd id="stat-pending">–</dd></div>
+      <div class="stat"><dt>Finalizados</dt><dd id="stat-done">–</dd></div>
+      <div class="stat"><dt>Espera media</dt><dd id="stat-wait">–</dd></div>
     </dl>
 
     <div class="controls">
-      <span class="live" id="live" data-estado="conectando"><i></i><span id="live-texto">Conectando…</span></span>
-      <time class="clock" id="reloj">--:--</time>
-      <button class="icon-btn" id="btn-sonido" type="button" aria-pressed="false" title="Aviso sonoro de pedidos nuevos">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="ondas" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/><path class="mute" d="M16 9l5 6M21 9l-5 6"/></svg>
-        <span id="btn-sonido-texto">Sonido off</span>
+      <span class="live" id="live" data-state="connecting"><i></i><span id="live-text">Conectando…</span></span>
+      <time class="clock" id="clock">--:--</time>
+      <button class="icon-btn" id="btn-sound" type="button" aria-pressed="false" title="Aviso sonoro de pedidos nuevos">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="waves" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/><path class="mute" d="M16 9l5 6M21 9l-5 6"/></svg>
+        <span id="btn-sound-text">Sonido off</span>
       </button>
     </div>
   </header>
 
   <main class="layout">
-    <section class="cocina" aria-labelledby="titulo-cocina">
+    <section class="kitchen" aria-labelledby="kitchen-title">
       <div class="section-head">
-        <h2 id="titulo-cocina">En cocina</h2>
-        <span class="count" id="count-pendientes">0</span>
+        <h2 id="kitchen-title">En cocina</h2>
+        <span class="count" id="count-pending">0</span>
       </div>
       <div class="tickets" id="tickets"></div>
-      <div class="vacio" id="vacio" hidden>
+      <div class="empty" id="empty" hidden>
         <svg viewBox="0 0 200 150" aria-hidden="true">
-          <g class="humo" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round">
+          <g class="smoke" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round">
             <path d="M96 26c-6-7 6-11 0-20"/><path d="M106 24c-6-7 6-11 0-20"/>
           </g>
           <rect x="91" y="28" width="18" height="34" rx="3" fill="#8e5634"/>
           <path d="M25 130a75 75 0 0 1 150 0z" fill="#b5764a"/>
           <path d="M40 130a60 60 0 0 1 20-45" fill="none" stroke="#c98b5e" stroke-width="4" stroke-linecap="round"/>
           <path d="M68 130a32 32 0 0 1 64 0z" fill="#1f1612"/>
-          <path class="llama" d="M86 130c-3-9 4-12 5-19 5 5 9 9 7 19z" fill="#f2a33a"/>
-          <path class="llama" d="M98 130c-3-12 6-16 7-25 6 7 10 13 7 25z" fill="#d6422b"/>
-          <path class="llama" d="M108 130c-2-7 3-10 4-15 4 4 6 8 4 15z" fill="#f5cf6b"/>
+          <path class="flame" d="M86 130c-3-9 4-12 5-19 5 5 9 9 7 19z" fill="#f2a33a"/>
+          <path class="flame" d="M98 130c-3-12 6-16 7-25 6 7 10 13 7 25z" fill="#d6422b"/>
+          <path class="flame" d="M108 130c-2-7 3-10 4-15 4 4 6 8 4 15z" fill="#f5cf6b"/>
           <rect x="14" y="128" width="172" height="12" rx="6" fill="#8e5634"/>
         </svg>
         <h3>El horno está listo</h3>
@@ -71,13 +71,13 @@
       </div>
     </section>
 
-    <aside class="hechos" aria-labelledby="titulo-hechos">
+    <aside class="done" aria-labelledby="done-title">
       <div class="section-head">
-        <h2 id="titulo-hechos">Finalizados</h2>
+        <h2 id="done-title">Finalizados</h2>
         <span class="hint">últimas 12 h</span>
       </div>
-      <ol class="lista-hechos" id="lista-hechos"></ol>
-      <p class="hechos-vacio" id="hechos-vacio">Todavía no se ha finalizado ningún pedido.</p>
+      <ol class="done-list" id="done-list"></ol>
+      <p class="done-empty" id="done-empty">Todavía no se ha finalizado ningún pedido.</p>
     </aside>
   </main>
 

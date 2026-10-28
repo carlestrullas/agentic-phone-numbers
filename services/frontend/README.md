@@ -1,17 +1,17 @@
-# Panel de comandas
+# Order board
 
-Muestra en tiempo real los pedidos de la tabla `pedidos` y permite marcarlos como finalizados.
+Shows the orders in the `pedidos` table in real time and lets the kitchen mark them as completed. The UI is in Spanish, for the pizzeria staff.
 
-- **Tiempo real:** un trigger de Postgres (`NOTIFY pedidos_cambio`) avisa de cada cambio y el servidor lo reenvía al navegador por Server-Sent Events. Además recarga cada 60 s como red de seguridad.
-- **Login:** usuario y contraseña de `PANEL_USER` / `PANEL_PASSWORD`. Si la contraseña está vacía no pide login (solo en local).
-- **Uso:** pendientes del más antiguo al más nuevo (amarillo a partir de 15 min, rojo a partir de 30). *Finalizados* muestra las últimas 12 h, con *Deshacer*. El sonido se activa con el botón de la cabecera.
+- **Real time:** a Postgres trigger (`NOTIFY pedidos_cambio`) reports every change and the server forwards it to the browser via Server-Sent Events. It also reloads every 60 s as a safety net.
+- **Login:** user and password from `PANEL_USER` / `PANEL_PASSWORD`. With an empty password no login is required (local only).
+- **Usage:** pending orders from oldest to newest (yellow after 15 min, red after 30). The *Finalizados* column shows the last 12 h, with *Deshacer* (undo). Sound alerts are toggled from the header button.
 
-| Método | Ruta | Qué hace |
+| Method | Path | What it does |
 |---|---|---|
-| GET | `/api/pedidos` | Pendientes + finalizados de las últimas 12 h |
-| POST | `/api/pedidos/:id/finalizar` | Marca un pedido como finalizado |
-| POST | `/api/pedidos/:id/reabrir` | Lo devuelve a pendiente |
-| GET | `/api/stream` | Eventos en tiempo real (SSE) |
-| GET | `/healthz` | Comprobación de salud (sin login) |
+| GET | `/api/orders` | Pending + completed in the last 12 h |
+| POST | `/api/orders/:id/complete` | Marks an order as completed |
+| POST | `/api/orders/:id/reopen` | Moves it back to pending |
+| GET | `/api/stream` | Real-time events (SSE) |
+| GET | `/healthz` | Health check (no login) |
 
-Tras cambiar el código: `make up` (reconstruye la imagen).
+After changing the code: `make up` (rebuilds the image).

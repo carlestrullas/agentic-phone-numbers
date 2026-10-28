@@ -1,11 +1,11 @@
 {
   "id": "UCsScKjHgw08Zda3",
-  "name": "Pizzeria - Crear pedido (tool ElevenLabs)",
+  "name": "Pizzeria - Create order (ElevenLabs tool)",
   "active": true,
   "nodes": [
     {
       "id": "a1",
-      "name": "Webhook pedido",
+      "name": "Order webhook",
       "webhookId": "5b0f7c1e-3a2d-4c9b-9f11-7e2d8a6c4b10",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -29,7 +29,7 @@
     },
     {
       "id": "a2",
-      "name": "Validar pedido",
+      "name": "Validate order",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -37,12 +37,12 @@
         0
       ],
       "parameters": {
-        "jsCode": "const b = $input.first().json.body || {};\nconst errores = [];\nconst txt = v => (v === undefined || v === null) ? '' : String(v).trim();\n\nconst nombre = txt(b.nombre_cliente);\nconst telefono = txt(b.telefono);\nconst tipo = txt(b.tipo_entrega).toLowerCase();\nconst direccion = txt(b.direccion);\nconst notas = txt(b.notas);\n\nlet productos = b.productos;\nif (typeof productos === 'string') {\n  try { productos = JSON.parse(productos); } catch (e) { productos = null; }\n}\n\nif (!nombre) errores.push('falta nombre_cliente');\nif (!telefono) errores.push('falta telefono');\nif (!['domicilio', 'recoger'].includes(tipo)) errores.push(\"tipo_entrega debe ser 'domicilio' o 'recoger'\");\nif (tipo === 'domicilio' && !direccion) errores.push('falta direccion para un pedido a domicilio');\nif (!Array.isArray(productos) || productos.length === 0) {\n  errores.push('productos debe ser una lista con al menos un producto');\n} else {\n  productos = productos.map(p => ({\n    producto: txt(p.producto),\n    tamano: txt(p.tamano) || null,\n    cantidad: parseInt(p.cantidad, 10) || 1,\n    notas: txt(p.notas) || null,\n  }));\n  if (productos.some(p => !p.producto)) errores.push('cada producto necesita un nombre en el campo producto');\n}\n\nif (errores.length) return [{ json: { valido: false, errores } }];\n\nreturn [{ json: {\n  valido: true,\n  nombre_cliente: nombre,\n  telefono,\n  tipo_entrega: tipo,\n  direccion: direccion || null,\n  productos: JSON.stringify(productos),\n  notas: notas || null,\n} }];"
+        "jsCode": "// Input: the JSON body sent by the ElevenLabs tool.\n// Output field names (errores) and messages stay in Spanish: they are part of the\n// contract with the voice agent, which talks to customers in Spanish.\nconst body = $input.first().json.body || {};\nconst errors = [];\nconst text = v => (v === undefined || v === null) ? '' : String(v).trim();\n\nconst name = text(body.nombre_cliente);\nconst phone = text(body.telefono);\nconst deliveryType = text(body.tipo_entrega).toLowerCase();\nconst address = text(body.direccion);\nconst notes = text(body.notas);\n\nlet items = body.productos;\nif (typeof items === 'string') {\n  try { items = JSON.parse(items); } catch (e) { items = null; }\n}\n\nif (!name) errors.push('falta nombre_cliente');\nif (!phone) errors.push('falta telefono');\nif (!['domicilio', 'recoger'].includes(deliveryType)) errors.push(\"tipo_entrega debe ser 'domicilio' o 'recoger'\");\nif (deliveryType === 'domicilio' && !address) errors.push('falta direccion para un pedido a domicilio');\nif (!Array.isArray(items) || items.length === 0) {\n  errors.push('productos debe ser una lista con al menos un producto');\n} else {\n  items = items.map(it => ({\n    producto: text(it.producto),\n    tamano: text(it.tamano) || null,\n    cantidad: parseInt(it.cantidad, 10) || 1,\n    notas: text(it.notas) || null,\n  }));\n  if (items.some(it => !it.producto)) errors.push('cada producto necesita un nombre en el campo producto');\n}\n\nif (errors.length) return [{ json: { valid: false, errores: errors } }];\n\nreturn [{ json: {\n  valid: true,\n  nombre_cliente: name,\n  telefono: phone,\n  tipo_entrega: deliveryType,\n  direccion: address || null,\n  productos: JSON.stringify(items),\n  notas: notes || null,\n} }];"
       }
     },
     {
       "id": "a3",
-      "name": "Es valido?",
+      "name": "Is valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
@@ -60,7 +60,7 @@
           "conditions": [
             {
               "id": "c1",
-              "leftValue": "={{ $json.valido }}",
+              "leftValue": "={{ $json.valid }}",
               "rightValue": "",
               "operator": {
                 "type": "boolean",
@@ -76,7 +76,7 @@
     },
     {
       "id": "a4",
-      "name": "Insertar pedido",
+      "name": "Insert order",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "onError": "continueErrorOutput",
@@ -100,7 +100,7 @@
     },
     {
       "id": "a5",
-      "name": "Responder OK",
+      "name": "Respond OK",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
@@ -117,7 +117,7 @@
     },
     {
       "id": "a6",
-      "name": "Responder error BD",
+      "name": "Respond DB error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
@@ -134,7 +134,7 @@
     },
     {
       "id": "a7",
-      "name": "Responder datos incorrectos",
+      "name": "Respond invalid data",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
@@ -151,58 +151,58 @@
     }
   ],
   "connections": {
-    "Webhook pedido": {
+    "Order webhook": {
       "main": [
         [
           {
-            "node": "Validar pedido",
+            "node": "Validate order",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validar pedido": {
+    "Validate order": {
       "main": [
         [
           {
-            "node": "Es valido?",
+            "node": "Is valid?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Es valido?": {
+    "Is valid?": {
       "main": [
         [
           {
-            "node": "Insertar pedido",
+            "node": "Insert order",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Responder datos incorrectos",
+            "node": "Respond invalid data",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Insertar pedido": {
+    "Insert order": {
       "main": [
         [
           {
-            "node": "Responder OK",
+            "node": "Respond OK",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Responder error BD",
+            "node": "Respond DB error",
             "type": "main",
             "index": 0
           }

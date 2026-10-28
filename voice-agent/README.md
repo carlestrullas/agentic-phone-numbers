@@ -1,35 +1,35 @@
-# Agente de voz (ElevenLabs)
+# Voice agent (ElevenLabs)
 
-El agente **vive y se edita en ElevenLabs**. Esta carpeta guarda una copia de su configuración para tenerla versionada junto al resto del sistema.
+The agent **lives and is edited in ElevenLabs**. This folder keeps a copy of its configuration so it is versioned alongside the rest of the system.
 
 ```bash
-make agent-export   # descarga agent.json, system-prompt.md y tools/ (necesita ELEVENLABS_* en el .env)
+make agent-export   # downloads agent.json, system-prompt.md and tools/ (needs ELEVENLABS_* in .env)
 ```
 
-El token del webhook se sustituye por `${PIZZERIA_WEBHOOK_TOKEN}` al exportar, para que no llegue a Git.
+The webhook token is replaced with `${PIZZERIA_WEBHOOK_TOKEN}` on export, so it never reaches Git.
 
-## Tool «crear pedido»
+## "Create order" tool
 
 | | |
 |---|---|
-| Método / URL | `POST https://<dominio-o-túnel>/webhook/pizzeria/pedido` |
-| Cabecera | `X-Pizzeria-Token: <PIZZERIA_WEBHOOK_TOKEN>` |
+| Method / URL | `POST https://<domain-or-tunnel>/webhook/pizzeria/pedido` |
+| Header | `X-Pizzeria-Token: <PIZZERIA_WEBHOOK_TOKEN>` |
 
-Body (JSON):
+JSON body:
 
-| Campo | Tipo | Regla |
+| Field | Type | Rule |
 |---|---|---|
-| `nombre_cliente` | string | obligatorio |
-| `telefono` | string | obligatorio |
-| `tipo_entrega` | string | `domicilio` o `recoger` |
-| `direccion` | string | obligatoria si es a domicilio |
-| `productos` | array | `[{producto, tamano?, cantidad?, notas?}]`, mínimo 1 |
-| `notas` | string | opcional |
+| `nombre_cliente` | string | required (customer name) |
+| `telefono` | string | required (phone) |
+| `tipo_entrega` | string | `domicilio` (delivery) or `recoger` (pickup) |
+| `direccion` | string | required for delivery (address) |
+| `productos` | array | `[{producto, tamano?, cantidad?, notas?}]`, at least 1 |
+| `notas` | string | optional (notes) |
 
-Respuesta: el agente debe leer `mensaje`. Si `ok` es `false` (400), tiene que pedir al cliente los datos que falten y volver a llamar a la tool.
+Response: the agent must read `mensaje`. If `ok` is `false` (400), it must ask the customer for the missing data and call the tool again.
 
-## Al cambiar de entorno
+## Switching environments
 
-La URL del webhook y el token son distintos en local (túnel) y en el servidor. Al pasar a producción, actualiza ambos en la tool. Lo ideal es tener **dos agentes**: uno de pruebas (apuntando al túnel) y el real (apuntando al servidor).
+The webhook URL and token differ locally (tunnel) and on the server. When going to production, update both in the tool. Ideally keep **two agents**: a test one (pointing to the tunnel) and the real one (pointing to the server).
 
-> Si cambias los campos del pedido, cámbialos en los tres sitios: esta tool, el nodo «Validar pedido» del workflow y la tabla `pedidos`.
+> If you change the order fields, change them in all three places: this tool, the "Validate order" node of the workflow and the `pedidos` table.

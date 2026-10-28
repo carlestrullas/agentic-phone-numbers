@@ -1,6 +1,6 @@
 FROM postgres:17
 
-# Scripts que se ejecutan solo la primera vez (cuando el volumen esta vacio), por orden:
-#   00-n8n-db.sh     -> crea la BD 'n8n'
-#   01-pedidos.sql   -> tabla 'pedidos' + trigger de tiempo real (en la BD $POSTGRES_DB)
+# Scripts run only once (when the volume is empty), in order:
+#   00-n8n-db.sh     -> creates the 'n8n' database
+#   01-pedidos.sql   -> 'pedidos' (orders) table + real-time trigger (in the $POSTGRES_DB database)
 COPY init/ /docker-entrypoint-initdb.d/

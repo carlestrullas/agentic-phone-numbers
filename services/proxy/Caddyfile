@@ -1,7 +1,7 @@
 {$DOMAIN} {
 	encode gzip
 
-	# Webhook de pedidos (tool de ElevenLabs). El token lo valida n8n.
+	# Order webhook (ElevenLabs tool). n8n validates the token.
 	handle /webhook/pizzeria/pedido {
 		@no_post not method POST
 		respond @no_post 405
@@ -12,10 +12,10 @@
 		reverse_proxy n8n:5678
 	}
 
-	# Panel de comandas (el login lo pide la propia app)
+	# Order board (the app itself asks for the login)
 	handle {
 		reverse_proxy frontend:8080 {
-			flush_interval -1 # tiempo real (SSE)
+			flush_interval -1 # real time (SSE)
 		}
 	}
 }

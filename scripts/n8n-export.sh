@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Exporta los workflows del n8n en marcha a n8n/workflows/ (para hacer commit).
+# Exports the workflows of the running n8n into n8n/workflows/ (ready to commit).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -15,4 +15,4 @@ docker compose exec -T -u root n8n rm -rf "$TMP"
 
 echo
 git status --short n8n/workflows/ 2>/dev/null || true
-echo "Listo. Revisa los cambios y haz commit."
+echo "Done. Review the changes and commit them."
