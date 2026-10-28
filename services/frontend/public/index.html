@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Il Forno · Comandas</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23e3a14a'/%3E%3Ccircle cx='32' cy='32' r='24' fill='%23f5cf6b'/%3E%3Ccircle cx='23' cy='24' r='5' fill='%23d6422b'/%3E%3Ccircle cx='40' cy='22' r='5' fill='%23d6422b'/%3E%3Ccircle cx='38' cy='40' r='5' fill='%23d6422b'/%3E%3Ccircle cx='22' cy='40' r='4' fill='%23d6422b'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="30" fill="#e3a14a"/>
+        <circle cx="32" cy="32" r="24.5" fill="#f5cf6b"/>
+        <circle cx="23" cy="23" r="5" fill="#d6422b"/>
+        <circle cx="41" cy="22" r="5" fill="#d6422b"/>
+        <circle cx="39" cy="40" r="5" fill="#d6422b"/>
+        <circle cx="22" cy="40" r="4.5" fill="#d6422b"/>
+        <path d="M31 30c3-4 8-4 9-2-2 3-6 4-9 2z" fill="#2f7d4f"/>
+        <path d="M28 46c-1-4 2-7 4-7 1 3-1 6-4 7z" fill="#2f7d4f"/>
+      </svg>
+      <div>
+        <h1>Il Forno</h1>
+        <p>Panel de comandas</p>
+      </div>
+    </div>
+
+    <dl class="stats">
+      <div class="stat"><dt>En cocina</dt><dd id="stat-pendientes">–</dd></div>
+      <div class="stat"><dt>Finalizados</dt><dd id="stat-finalizados">–</dd></div>
+      <div class="stat"><dt>Espera media</dt><dd id="stat-espera">–</dd></div>
+    </dl>
+
+    <div class="controls">
+      <span class="live" id="live" data-estado="conectando"><i></i><span id="live-texto">Conectando…</span></span>
+      <time class="clock" id="reloj">--:--</time>
+      <button class="icon-btn" id="btn-sonido" type="button" aria-pressed="false" title="Aviso sonoro de pedidos nuevos">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="ondas" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/><path class="mute" d="M16 9l5 6M21 9l-5 6"/></svg>
+        <span id="btn-sonido-texto">Sonido off</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="cocina" aria-labelledby="titulo-cocina">
+      <div class="section-head">
+        <h2 id="titulo-cocina">En cocina</h2>
+        <span class="count" id="count-pendientes">0</span>
+      </div>
+      <div class="tickets" id="tickets"></div>
+      <div class="vacio" id="vacio" hidden>
+        <svg viewBox="0 0 200 150" aria-hidden="true">
+          <g class="humo" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round">
+            <path d="M96 26c-6-7 6-11 0-20"/><path d="M106 24c-6-7 6-11 0-20"/>
+          </g>
+          <rect x="91" y="28" width="18" height="34" rx="3" fill="#8e5634"/>
+          <path d="M25 130a75 75 0 0 1 150 0z" fill="#b5764a"/>
+          <path d="M40 130a60 60 0 0 1 20-45" fill="none" stroke="#c98b5e" stroke-width="4" stroke-linecap="round"/>
+          <path d="M68 130a32 32 0 0 1 64 0z" fill="#1f1612"/>
+          <path class="llama" d="M86 130c-3-9 4-12 5-19 5 5 9 9 7 19z" fill="#f2a33a"/>
+          <path class="llama" d="M98 130c-3-12 6-16 7-25 6 7 10 13 7 25z" fill="#d6422b"/>
+          <path class="llama" d="M108 130c-2-7 3-10 4-15 4 4 6 8 4 15z" fill="#f5cf6b"/>
+          <rect x="14" y="128" width="172" height="12" rx="6" fill="#8e5634"/>
+        </svg>
+        <h3>El horno está listo</h3>
+        <p>Los pedidos nuevos aparecerán aquí al instante.</p>
+      </div>
+    </section>
+
+    <aside class="hechos" aria-labelledby="titulo-hechos">
+      <div class="section-head">
+        <h2 id="titulo-hechos">Finalizados</h2>
+        <span class="hint">últimas 12 h</span>
+      </div>
+      <ol class="lista-hechos" id="lista-hechos"></ol>
+      <p class="hechos-vacio" id="hechos-vacio">Todavía no se ha finalizado ningún pedido.</p>
+    </aside>
+  </main>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

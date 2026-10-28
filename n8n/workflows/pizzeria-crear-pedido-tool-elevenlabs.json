@@ -1,0 +1,216 @@
+{
+  "id": "UCsScKjHgw08Zda3",
+  "name": "Pizzeria - Crear pedido (tool ElevenLabs)",
+  "active": true,
+  "nodes": [
+    {
+      "id": "a1",
+      "name": "Webhook pedido",
+      "webhookId": "5b0f7c1e-3a2d-4c9b-9f11-7e2d8a6c4b10",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pizzeria/pedido",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "jA08VU6SLQfTvonG",
+          "name": "Pizzeria webhook token"
+        }
+      }
+    },
+    {
+      "id": "a2",
+      "name": "Validar pedido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const b = $input.first().json.body || {};\nconst errores = [];\nconst txt = v => (v === undefined || v === null) ? '' : String(v).trim();\n\nconst nombre = txt(b.nombre_cliente);\nconst telefono = txt(b.telefono);\nconst tipo = txt(b.tipo_entrega).toLowerCase();\nconst direccion = txt(b.direccion);\nconst notas = txt(b.notas);\n\nlet productos = b.productos;\nif (typeof productos === 'string') {\n  try { productos = JSON.parse(productos); } catch (e) { productos = null; }\n}\n\nif (!nombre) errores.push('falta nombre_cliente');\nif (!telefono) errores.push('falta telefono');\nif (!['domicilio', 'recoger'].includes(tipo)) errores.push(\"tipo_entrega debe ser 'domicilio' o 'recoger'\");\nif (tipo === 'domicilio' && !direccion) errores.push('falta direccion para un pedido a domicilio');\nif (!Array.isArray(productos) || productos.length === 0) {\n  errores.push('productos debe ser una lista con al menos un producto');\n} else {\n  productos = productos.map(p => ({\n    producto: txt(p.producto),\n    tamano: txt(p.tamano) || null,\n    cantidad: parseInt(p.cantidad, 10) || 1,\n    notas: txt(p.notas) || null,\n  }));\n  if (productos.some(p => !p.producto)) errores.push('cada producto necesita un nombre en el campo producto');\n}\n\nif (errores.length) return [{ json: { valido: false, errores } }];\n\nreturn [{ json: {\n  valido: true,\n  nombre_cliente: nombre,\n  telefono,\n  tipo_entrega: tipo,\n  direccion: direccion || null,\n  productos: JSON.stringify(productos),\n  notas: notas || null,\n} }];"
+      }
+    },
+    {
+      "id": "a3",
+      "name": "Es valido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.valido }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a4",
+      "name": "Insertar pedido",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "onError": "continueErrorOutput",
+      "position": [
+        680,
+        -100
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO pedidos (nombre_cliente, telefono, tipo_entrega, direccion, productos, notas)\nVALUES ($1, $2, $3, $4, $5::jsonb, $6)\nRETURNING id, estado, creado_en;",
+        "options": {
+          "queryReplacement": "={{ [$json.nombre_cliente, $json.telefono, $json.tipo_entrega, $json.direccion, $json.productos, $json.notas] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "OrkmRX9UWpkc4OaM",
+          "name": "Postgres pizzeria"
+        }
+      }
+    },
+    {
+      "id": "a5",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        920,
+        -200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, pedido_id: $json.id, estado: $json.estado, mensaje: 'Pedido registrado con el numero ' + $json.id } }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "a6",
+      "name": "Responder error BD",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        920,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: false, mensaje: 'No se ha podido guardar el pedido. Pide disculpas al cliente y que vuelva a intentarlo.' } }}",
+        "options": {
+          "responseCode": 500
+        }
+      }
+    },
+    {
+      "id": "a7",
+      "name": "Responder datos incorrectos",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        680,
+        150
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: false, errores: $json.errores, mensaje: 'Faltan datos o son incorrectos: ' + $json.errores.join('; ') + '. Pideselos al cliente y vuelve a llamar a la herramienta.' } }}",
+        "options": {
+          "responseCode": 400
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook pedido": {
+      "main": [
+        [
+          {
+            "node": "Validar pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar pedido": {
+      "main": [
+        [
+          {
+            "node": "Es valido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es valido?": {
+      "main": [
+        [
+          {
+            "node": "Insertar pedido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder datos incorrectos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar pedido": {
+      "main": [
+        [
+          {
+            "node": "Responder OK",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder error BD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

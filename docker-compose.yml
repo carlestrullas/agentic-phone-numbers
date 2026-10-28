@@ -1,0 +1,66 @@
+# Servicios comunes a local y servidor.
+# Lo especifico de cada entorno esta en docker-compose.local.yml / docker-compose.prod.yml
+# (se eligen con COMPOSE_FILE en el .env).
+
+services:
+  postgres:
+    build: ./services/postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      TZ: ${TZ:-Europe/Madrid}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:${N8N_VERSION:-2.40.7}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # n8n guarda sus datos internos (workflows, credenciales, ejecuciones) en la BD 'n8n'
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      GENERIC_TIMEZONE: ${TZ:-Europe/Madrid}
+      TZ: ${TZ:-Europe/Madrid}
+      N8N_RUNNERS_ENABLED: "true"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: 336 # horas (14 dias)
+      # Los usa scripts/n8n-import.sh para crear las credenciales de los workflows
+      PIZZERIA_WEBHOOK_TOKEN: ${PIZZERIA_WEBHOOK_TOKEN}
+      PIZZERIA_DB: ${POSTGRES_DB}
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  frontend:
+    build: ./services/frontend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PANEL_USER: ${PANEL_USER:-cocina}
+      PANEL_PASSWORD: ${PANEL_PASSWORD:-}
+      TZ: ${TZ:-Europe/Madrid}
+
+volumes:
+  postgres_data:
+  n8n_data:
